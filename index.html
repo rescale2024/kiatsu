@@ -160,7 +160,7 @@
       <span><i style="background:var(--l3)"></i>警戒</span>
       <span id="lgDown"></span>
       <span id="lgUp"></span>
-      <span style="width:100%">左右にスクロールすると、その時刻の気圧が上に表示されます（約3日先まで）。</span>
+      <span style="width:100%">左右にスクロールすると、その時刻の気圧が上に表示されます（5日先まで）。</span>
     </div>
   </section>
 
@@ -189,7 +189,7 @@
   const WD = ["日","月","火","水","木","金","土"];
   const HR = 3600e3;
   const PXH = 36;                  // 1時間あたりの横幅(px)
-  const PAST_H = 12, AHEAD_H = 72; // タイムラインの範囲：12時間前〜72時間後
+  const PAST_H = 12, AHEAD_H = 120; // タイムラインの範囲：12時間前〜5日後
   const LV_TXT = ["安定","やや注意","注意","警戒"];
   const LV_COL = [null,"#5fb3a1","#e9a23b","#dc5a40"];
   const LV_DARK = [null,"#2f8a77","#b9771a","#b53a22"];
@@ -357,13 +357,16 @@
     tl.forEach(x => {
       const xx = X(x.t.getTime()), h = x.t.getHours(), m3 = h%3===0;
       ctx.strokeStyle = "#b9b2a6"; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(xx, ROW.tick-(m3?9:5)); ctx.lineTo(xx, ROW.tick); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(xx, ROW.tick-(m3?9:6)); ctx.lineTo(xx, ROW.tick); ctx.stroke();
+      // 1時間ごとの目盛りラベル
+      const key = h===0||h===12;
+      ctx.fillStyle = key ? css("--ink") : m3 ? css("--sub") : "#a39d93";
+      ctx.font = (key ? "bold 13px" : m3 ? "12px" : "11px")+" sans-serif";
+      ctx.fillText(key ? h+"時" : h, xx, ROW.lbl);
+      // 1時間ごとの縦線（3時間ごとは少し濃く）
+      ctx.strokeStyle = h===0 ? "#d6cfc3" : m3 ? "rgba(0,0,0,.07)" : "rgba(0,0,0,.03)";
+      ctx.beginPath(); ctx.moveTo(xx, ROW.tick+2); ctx.lineTo(xx, ROW.h); ctx.stroke();
       if(m3){
-        ctx.fillStyle = h===0||h===12 ? css("--ink") : css("--sub");
-        ctx.font = (h===0||h===12 ? "bold 13px" : "12px")+" sans-serif";
-        ctx.fillText(h===0||h===12 ? h+"時" : h, xx, ROW.lbl);
-        ctx.strokeStyle = h===0 ? "#d6cfc3" : "rgba(0,0,0,.06)";
-        ctx.beginPath(); ctx.moveTo(xx, ROW.tick+2); ctx.lineTo(xx, ROW.h); ctx.stroke();
         // 気温・天気（3時間ごと）
         const fut = x.t.getTime() >= base.getTime();
         ctx.font = "bold 12px sans-serif"; ctx.fillStyle = fut ? css("--warm") : css("--sub");
@@ -457,7 +460,8 @@
     const j = Math.min(i+3, tl.length-1), c = tl[j].p - pt.p;
     $("iCL").textContent = t.getHours()+"〜"+tl[j].t.getHours()+"時の変化";
     const cl = levelOf(c);
-    $("iC").textContent = fmt(c);
+    $("iC").textContent = j > i ? fmt(c) : "—";
+    if(j === i) $("iCL").textContent = "この先の変化";
     $("iC").style.color = cl.lv ? LV_DARK[cl.lv] : css("--ink");
     $("iLv").innerHTML = pt.lv ? faceHTML(pt.dir,26)+" この時間は "+lvTag(pt.lv, pt.dir) : '<span class="badge">この時間は安定</span>';
     $("nowBtn").classList.toggle("show", Math.abs(state.selT - Date.now()) > 1.5*HR);
