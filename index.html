@@ -2,44 +2,92 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#f4f1ec">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#3d6f8e">
 <title>きあつ予報</title>
 <style>
   :root{
     --bg:#f4f1ec; --card:#ffffff; --ink:#2b2a28; --sub:#7a766f; --line:#e6e1d8;
-    --accent:#3d6f8e; --accent-soft:#dfeaf1;
-    --ok:#5b9a6f; --warn:#e0a03a; --bad:#d4583f;
+    --accent:#3d6f8e; --accent-soft:#dfeaf1; --ok:#5b9a6f; --warm:#c8643b;
+    --l1:#5fb3a1; --l2:#e9a23b; --l3:#dc5a40;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
     font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
     -webkit-text-size-adjust:100%}
-  main{max-width:720px;margin:0 auto;padding:16px 14px 40px}
-  header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
-  h1{font-size:20px;margin:0;letter-spacing:.05em}
-  .loc{font-size:13px;color:var(--sub);background:none;border:1px solid var(--line);
-    border-radius:999px;padding:6px 12px;cursor:pointer}
-  .card{background:var(--card);border-radius:16px;padding:16px;margin-bottom:12px;
+
+  /* app bar */
+  .appbar{position:sticky;top:0;z-index:20;background:var(--accent);color:#fff;
+    padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top))}
+  .appbar .in{max-width:720px;margin:0 auto;display:flex;align-items:center;gap:10px}
+  .appbar h1{font-size:18px;margin:0;line-height:1.25;letter-spacing:.05em}
+  .appbar h1 small{display:block;font-size:12px;font-weight:400;opacity:.85;letter-spacing:0}
+  .loc{margin-left:auto;background:rgba(255,255,255,.16);border:none;color:#fff;
+    border-radius:999px;padding:8px 12px;font-size:13px;cursor:pointer}
+
+  main{max-width:720px;margin:0 auto;padding:12px 12px 40px}
+  .card{background:var(--card);border-radius:16px;padding:14px;margin-bottom:12px;
     box-shadow:0 1px 2px rgba(0,0,0,.04)}
-  .now{display:flex;gap:16px;align-items:center}
-  .now .big{font-size:40px;font-weight:700;line-height:1}
-  .now .unit{font-size:14px;color:var(--sub);margin-left:4px;font-weight:400}
-  .badge{display:inline-block;padding:4px 10px;border-radius:999px;font-size:13px;font-weight:700;color:#fff}
-  .lv0{background:var(--ok)} .lv1{background:var(--warn)} .lv2{background:var(--bad)}
-  .trend{font-size:13px;color:var(--sub);margin-top:6px}
-  .msg{margin-top:12px;font-size:15px;line-height:1.6}
-  .tabs{display:flex;gap:6px;margin-bottom:8px}
-  .tabs button{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px;
-    font-size:14px;color:var(--sub);cursor:pointer}
-  .tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
-  .chartwrap{position:relative}
-  canvas{width:100%;height:260px;display:block;touch-action:pan-y}
-  .tip{position:absolute;top:0;pointer-events:none;background:rgba(43,42,40,.88);color:#fff;
-    font-size:12px;padding:6px 8px;border-radius:8px;white-space:nowrap;display:none;transform:translateX(-50%)}
-  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--sub);margin-top:8px}
-  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
-  .day{display:grid;grid-template-columns:72px 34px 1fr auto;align-items:center;gap:8px;
+
+  /* search */
+  .search{display:none}
+  .search.open{display:block}
+  .search .row{display:flex;gap:6px}
+  .search input{flex:1;font-size:16px;padding:10px;border:1px solid var(--line);border-radius:10px;min-width:0}
+  .search button{font-size:14px;padding:10px 12px;border-radius:10px;border:none;background:var(--accent);color:#fff;cursor:pointer}
+  .search .alt{background:var(--accent-soft);color:var(--accent);width:100%;margin-top:8px}
+  .results button{display:block;width:100%;text-align:left;background:none;border:none;
+    border-top:1px solid var(--line);padding:10px 4px;font-size:15px;cursor:pointer;color:var(--ink)}
+  .results button small{color:var(--sub)}
+
+  /* selected-time info */
+  .info{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+  .info .y{font-size:13px;color:var(--sub)}
+  .info .md{font-size:26px;font-weight:700;line-height:1.05;font-variant-numeric:tabular-nums}
+  .info .md small{font-size:15px;font-weight:400;color:var(--sub);margin-left:2px}
+  .info .hr{font-size:48px;font-weight:700;line-height:.85;font-variant-numeric:tabular-nums}
+  .info .hr small{font-size:20px;margin-left:2px}
+  .stats{flex-basis:100%;display:grid;grid-template-columns:1fr 1fr 1.3fr;gap:8px;margin-top:6px}
+  .stats div{background:#f6f4f0;border-radius:10px;padding:6px 10px;font-size:11px;color:var(--sub);line-height:1.3;border-left:4px solid transparent}
+  .stats b{display:block;font-size:18px;color:var(--ink);font-variant-numeric:tabular-nums}
+  .selrow{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;color:var(--sub);min-height:30px}
+  .tag{font-size:12px;font-weight:700;border-radius:999px;padding:3px 9px;color:#fff;white-space:nowrap}
+  .nowbtn{margin-left:auto;border:1px solid var(--accent);background:#fff;color:var(--accent);
+    border-radius:999px;padding:5px 12px;font-size:13px;cursor:pointer;visibility:hidden}
+  .nowbtn.show{visibility:visible}
+
+  /* timeline */
+  .tlcard{padding:0;overflow:hidden}
+  .tlwrap{position:relative;user-select:none;-webkit-user-select:none}
+  .scroller{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .scroller::-webkit-scrollbar{display:none}
+  .inner{position:relative}
+  .dayrow{display:flex;height:28px;background:#efebe4;border-bottom:1px solid var(--line)}
+  .dayseg{flex:none;border-left:1px solid #d6cfc3;overflow:visible}
+  .dayseg:first-child{border-left:none}
+  .dayseg span{position:sticky;left:52px;display:inline-block;padding:5px 8px;font-weight:700;font-size:14px;white-space:nowrap}
+  .dayseg em{font-style:normal;font-size:11px;font-weight:700;color:#fff;background:var(--accent);
+    border-radius:999px;padding:1px 7px;margin-left:6px;vertical-align:1px}
+  .dayseg.sun span{color:#c0504d} .dayseg.sat span{color:var(--accent)}
+  #tl{display:block;cursor:pointer}
+  .yaxis{position:absolute;left:0;top:28px;bottom:0;width:50px;pointer-events:none;
+    background:linear-gradient(90deg,rgba(255,255,255,.96) 62%,rgba(255,255,255,0))}
+  .yaxis div{position:absolute;left:6px;font-size:12px;color:var(--accent);transform:translateY(-50%);
+    font-variant-numeric:tabular-nums;font-weight:700}
+  .yaxis div.s{color:var(--sub);font-weight:400;font-size:10px}
+  .cline{position:absolute;left:50%;top:28px;bottom:0;width:2px;margin-left:-1px;background:rgba(43,42,40,.45);pointer-events:none}
+  .ctri{position:absolute;left:50%;top:28px;width:0;height:0;border:7px solid transparent;border-top:9px solid var(--ink);margin-left:-7px;pointer-events:none}
+  .cdot{position:absolute;left:50%;top:0;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;
+    background:var(--accent);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);pointer-events:none;display:none}
+  .tlfoot{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--sub);padding:10px 14px 12px;border-top:1px solid var(--line)}
+  .tlfoot i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-2px}
+
+  /* lists */
+  h2{font-size:15px;margin:0 0 8px}
+  .msg .row{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:14px;line-height:1.5}
+  .face{display:inline-block;vertical-align:middle;flex:none}
+  .faces{display:flex;gap:4px;align-items:center;justify-content:flex-end}
+  .day{display:grid;grid-template-columns:64px 30px 1fr auto;align-items:center;gap:8px;
     padding:10px 0;border-top:1px solid var(--line)}
   .day:first-child{border-top:none}
   .day .d{font-weight:700;font-size:15px}
@@ -47,67 +95,78 @@
   .day .w{font-size:22px;text-align:center}
   .day .p{font-size:13px;color:var(--sub);line-height:1.5}
   .day .p b{color:var(--ink)}
-  .search{display:none}
-  .search.open{display:block}
-  .search .row{display:flex;gap:6px}
-  .search input{flex:1;font-size:16px;padding:10px;border:1px solid var(--line);border-radius:10px}
-  .search button{font-size:14px;padding:10px 12px;border-radius:10px;border:none;background:var(--accent);color:#fff;cursor:pointer}
-  .search .alt{background:var(--accent-soft);color:var(--accent);width:100%;margin-top:8px}
-  .results button{display:block;width:100%;text-align:left;background:none;border:none;
-    border-top:1px solid var(--line);padding:10px 4px;font-size:15px;cursor:pointer;color:var(--ink)}
-  .results button small{color:var(--sub)}
+  .badge{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;color:#fff;background:var(--ok)}
   .note{font-size:12px;color:var(--sub);line-height:1.7}
-  .err{color:var(--bad);font-size:14px}
-  h2{font-size:15px;margin:0 0 8px}
-  .face{display:inline-block;vertical-align:middle}
-  .faces{display:flex;gap:4px;align-items:center;justify-content:flex-end}
-  .tag{font-size:11px;font-weight:700;border-radius:999px;padding:2px 7px;color:#fff}
-  .tag.up{background:#e2a917} .tag.down{background:#4f9ad0}
-  .nowfaces{text-align:center;font-size:12px;color:var(--sub)}
-  .msg .row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .err{color:var(--l3);font-size:14px}
 </style>
 </head>
 <body>
-<main>
-  <header>
-    <h1>きあつ予報</h1>
-    <button class="loc" id="locBtn">📍 <span id="locName">場所を選ぶ</span></button>
-  </header>
+<header class="appbar">
+  <div class="in">
+    <h1>きあつ予報<small id="locName">場所を選ぶ</small></h1>
+    <button class="loc" id="locBtn">📍 場所を変更</button>
+  </div>
+</header>
 
+<main>
   <section class="card search" id="search">
     <div class="row">
-      <input id="q" placeholder="市区町村名（例：世田谷区、大阪市）" enterkeyhint="search">
+      <input id="q" placeholder="市区町村名（例：大府市、世田谷区）" enterkeyhint="search">
       <button id="qBtn">検索</button>
     </div>
     <button class="alt" id="gpsBtn">現在地を使う</button>
     <div class="results" id="results"></div>
   </section>
 
-  <section class="card" id="nowCard">
-    <div class="now">
+  <!-- 選択中の時刻の情報 -->
+  <section class="card">
+    <div class="info">
       <div>
-        <div class="big" id="nowP">----<span class="unit">hPa</span></div>
-        <div class="trend" id="trend">読み込み中…</div>
+        <div class="y" id="iY">----</div>
+        <div class="md" id="iMD">--/--</div>
       </div>
-      <div style="margin-left:auto" id="nowBadge"></div>
+      <div class="hr" id="iH">--<small>時</small></div>
+      <div class="stats">
+        <div style="border-left-color:var(--warm)">気温 (℃)<b id="iT">--</b></div>
+        <div style="border-left-color:var(--accent)">気圧 (hPa)<b id="iP">----</b></div>
+        <div style="border-left-color:#b9b2a6"><span id="iCL">3時間の変化</span><b id="iC">--</b></div>
+      </div>
     </div>
-    <div class="msg" id="msg"></div>
+    <div class="selrow">
+      <span id="iLv"></span>
+      <button class="nowbtn" id="nowBtn">いまに戻る</button>
+    </div>
+  </section>
+
+  <!-- 横スクロールの気圧タイムライン -->
+  <section class="card tlcard">
+    <div class="tlwrap" id="tlwrap">
+      <div class="scroller" id="sc">
+        <div id="track">
+          <div class="inner" id="inner">
+            <div class="dayrow" id="dayrow"></div>
+            <canvas id="tl"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="yaxis" id="yaxis"></div>
+      <div class="cline"></div>
+      <div class="ctri"></div>
+      <div class="cdot" id="cdot"></div>
+    </div>
+    <div class="tlfoot">
+      <span><i style="background:var(--l1)"></i>やや注意</span>
+      <span><i style="background:var(--l2)"></i>注意</span>
+      <span><i style="background:var(--l3)"></i>警戒</span>
+      <span id="lgDown"></span>
+      <span id="lgUp"></span>
+      <span style="width:100%">左右にスクロールすると、その時刻の気圧が上に表示されます（約3日先まで）。</span>
+    </div>
   </section>
 
   <section class="card">
-    <div class="tabs">
-      <button data-r="1" class="on">1日</button>
-      <button data-r="7">7日</button>
-    </div>
-    <div class="chartwrap">
-      <canvas id="chart"></canvas>
-      <div class="tip" id="tip"></div>
-    </div>
-    <div class="legend">
-      <span><i style="background:var(--accent)"></i>気圧</span>
-      <span id="lgUp"></span>
-      <span id="lgDown"></span>
-    </div>
+    <h2>この先48時間の注意時間帯</h2>
+    <div class="msg" id="msg"><span class="note">読み込み中…</span></div>
   </section>
 
   <section class="card">
@@ -117,7 +176,8 @@
 
   <p class="note">
     ・気圧は「現地気圧」（その場所の地表の気圧）です。<br>
-    ・注意レベルは3時間での気圧変化で判定しています（下降2hPa以上で注意、3.5hPa以上で警戒、上昇は3hPa以上で注意）。医学的な基準ではなく目安です。黄色の顔は急に上がるとき、水色の顔は急に下がるときのマークです。<br>
+    ・注意レベルは3時間での気圧変化で判定しています。下降：1.5hPa以上でやや注意、2hPa以上で注意、3.5hPa以上で警戒。上昇：2hPa以上でやや注意、3hPa以上で注意。医学的な基準ではなく目安です。<br>
+    ・水色の顔は気圧が急に下がるとき、黄色の顔は急に上がるときのマークです。<br>
     ・位置は約1km単位に丸めてから天気サービスに送っています。<br>
     ・データ：<a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>（約1時間ごとに更新）
   </p>
@@ -127,32 +187,45 @@
 (() => {
   const $ = id => document.getElementById(id);
   const WD = ["日","月","火","水","木","金","土"];
-  const DROP_WARN = -2, DROP_BAD = -3.5, RISE_WARN = 3;
+  const HR = 3600e3;
+  const PXH = 36;                  // 1時間あたりの横幅(px)
+  const PAST_H = 12, AHEAD_H = 72; // タイムラインの範囲：12時間前〜72時間後
+  const LV_TXT = ["安定","やや注意","注意","警戒"];
+  const LV_COL = [null,"#5fb3a1","#e9a23b","#dc5a40"];
+  const LV_DARK = [null,"#2f8a77","#b9771a","#b53a22"];
 
-  let state = { data:null, range:1, loc:null };
+  let state = { data:null, loc:null, tl:null, geom:null, selT:null };
 
   // ---------- storage ----------
   function loadLoc(){ try{ return JSON.parse(localStorage.getItem("kiatsu_loc")); }catch(e){ return null; } }
   function saveLoc(l){ try{ localStorage.setItem("kiatsu_loc", JSON.stringify(l)); }catch(e){} }
 
   // ---------- helpers ----------
-  const pad = n => String(n).padStart(2,"0");
-  const parseT = s => { // "2026-11-09T06:00" as local (Asia/Tokyo from API)
+  const parseT = s => {
     const [d,t] = s.split("T"); const [y,m,dd] = d.split("-").map(Number); const [h,mi] = t.split(":").map(Number);
     return new Date(y, m-1, dd, h, mi);
   };
-  function wIcon(c){
-    if(c===0) return "☀️"; if(c<=2) return "🌤️"; if(c===3) return "☁️";
+  function wIcon(c, isDay){
+    if(isDay === 0 && c <= 1) return "🌙";
+    if(c===0) return "☀️"; if(c<=2) return isDay===0 ? "☁️" : "🌤️"; if(c===3) return "☁️";
     if(c<=48) return "🌫️"; if(c<=57) return "🌦️"; if(c<=67) return "🌧️";
     if(c<=77) return "❄️"; if(c<=82) return "🌧️"; if(c<=86) return "🌨️"; return "⛈️";
   }
   function levelOf(d3){
-    if(d3 == null || isNaN(d3)) return 0;
-    if(d3 <= DROP_BAD) return 2;
-    if(d3 <= DROP_WARN || d3 >= RISE_WARN) return 1;
-    return 0;
+    if(d3 == null || isNaN(d3)) return {lv:0, dir:null};
+    if(d3 <= -3.5) return {lv:3, dir:"down"};
+    if(d3 <= -2)   return {lv:2, dir:"down"};
+    if(d3 <= -1.5) return {lv:1, dir:"down"};
+    if(d3 >= 3)    return {lv:2, dir:"up"};
+    if(d3 >= 2)    return {lv:1, dir:"up"};
+    return {lv:0, dir:null};
   }
-  const LV_TXT = ["安定","注意","警戒"];
+  const fmt = v => { const r = Math.round(v*10)/10; return r===0 ? "±0" : (r>0?"+":"")+r.toFixed(1); };
+  const hexA = (hex,a) => { const n=parseInt(hex.slice(1),16); return "rgba("+(n>>16)+","+((n>>8)&255)+","+(n&255)+","+a+")"; };
+  const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const dayDiff = d => { const t0 = new Date(); t0.setHours(0,0,0,0);
+    return Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate()) - t0)/864e5); };
+  const dayLbl = d => ["今日","明日","明後日"][dayDiff(d)] ?? (d.getMonth()+1)+"/"+d.getDate();
 
   // ---------- face marks ----------
   const FACE = {
@@ -177,14 +250,15 @@
   };
   const faceHTML = (k,sz) => '<span class="face" style="width:'+sz+'px;height:'+sz+'px">'+FACE[k].replace('<svg ','<svg width="'+sz+'" height="'+sz+'" ')+'</span>';
   const FACE_IMG = {};
-  ["up","down"].forEach(k => { const im = new Image(); im.onload = () => state.data && renderChart();
+  ["up","down"].forEach(k => { const im = new Image(); im.onload = () => state.data && renderTimeline(true);
     im.src = "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(FACE[k]); FACE_IMG[k] = im; });
-  const dirOf = x => x.lv ? (x.d3 < 0 ? "down" : "up") : null;
-  // group consecutive rapid-change hours of the same direction
+  const lvTag = (lv, dir) => '<span class="tag" style="background:'+LV_COL[lv]+'">'+(dir==="down"?"↓ ":"↑ ")+LV_TXT[lv]+'</span>';
+
+  // 同じ向きの急変が続く時間をまとめる
   function windows(pts){
     const out = []; let w = null;
     pts.forEach(x => {
-      const d = dirOf(x);
+      const d = x.dir;
       if(d && w && w.dir===d){ w.to = x.t; w.pts.push(x); w.lv = Math.max(w.lv, x.lv); }
       else { if(w) out.push(w); w = d ? {dir:d, from:x.t, to:x.t, lv:x.lv, pts:[x]} : null; }
     });
@@ -192,181 +266,246 @@
     out.forEach(w => w.peak = w.pts.reduce((a,b) => Math.abs(b.d3)>Math.abs(a.d3)?b:a));
     return out;
   }
-  const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 
   // ---------- fetch ----------
   async function fetchForecast(loc){
     const r2 = v => (+v).toFixed(2); // 約1km単位に丸めて送信
     const u = "https://api.open-meteo.com/v1/forecast?latitude="+r2(loc.lat)+"&longitude="+r2(loc.lon)+
-      "&hourly=surface_pressure,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min"+
+      "&hourly=surface_pressure,weather_code,temperature_2m,is_day"+
+      "&daily=weather_code,temperature_2m_max,temperature_2m_min"+
       "&past_days=1&forecast_days=7&timezone=Asia%2FTokyo";
     const r = await fetch(u); if(!r.ok) throw new Error("HTTP "+r.status);
-    const j = await r.json();
-    const t = j.hourly.time.map(parseT), p = j.hourly.surface_pressure;
+    const j = await r.json(), h = j.hourly;
+    const t = h.time.map(parseT), p = h.surface_pressure;
     const pts = [];
     for(let i=0;i<t.length;i++){
       if(p[i]==null) continue;
       const d3 = i>=3 && p[i-3]!=null ? p[i]-p[i-3] : null;
-      pts.push({t:t[i], p:p[i], d3, lv:levelOf(d3)});
+      pts.push(Object.assign({t:t[i], p:p[i], d3, temp:h.temperature_2m[i], wc:h.weather_code[i], day:h.is_day[i]}, levelOf(d3)));
     }
     return { pts, daily:j.daily };
   }
-
   async function geocode(q){
     const u = "https://geocoding-api.open-meteo.com/v1/search?name="+encodeURIComponent(q)+"&count=8&language=ja&format=json";
     const r = await fetch(u); const j = await r.json(); return j.results || [];
   }
 
-  // ---------- render: now ----------
-  function renderNow(){
+  // ---------- timeline ----------
+  const ROW = { lbl:16, tick:34, temp:50, icon:78, top:100, bot:380, bar:418, h:450 };
+  let hatchCache = {};
+  function hatch(ctx, color){
+    if(hatchCache[color]) return hatchCache[color];
+    const c = document.createElement("canvas"); c.width = c.height = 14;
+    const g = c.getContext("2d"); g.strokeStyle = color; g.lineWidth = 4;
+    g.beginPath(); for(let k=-14;k<=28;k+=14){ g.moveTo(k,14); g.lineTo(k+14,0); } g.stroke();
+    return hatchCache[color] = ctx.createPattern(c, "repeat");
+  }
+
+  function renderTimeline(keep){
+    const sc = $("sc");
+    const prevT = keep && state.selT ? state.selT : null;
+    const base = new Date(); base.setMinutes(0,0,0);
+    const start = base.getTime() - PAST_H*HR, end = base.getTime() + AHEAD_H*HR;
+    const tl = state.data.pts.filter(x => x.t.getTime()>=start && x.t.getTime()<=end);
+    if(tl.length < 4) return;
+    state.tl = tl;
+    const t0 = tl[0].t.getTime(), t1 = tl[tl.length-1].t.getTime();
+    const W = Math.round((t1-t0)/HR*PXH + PXH);
+    const X = t => (t - t0)/HR*PXH + PXH/2;
+
+    let lo = Math.min(...tl.map(x=>x.p)), hi = Math.max(...tl.map(x=>x.p));
+    lo = Math.floor(lo-2); hi = Math.ceil(hi+2);
+    if(hi-lo < 12){ const m = (hi+lo)/2; lo = Math.floor(m-6); hi = Math.ceil(m+6); }
+    const Y = p => ROW.top + (hi - p)/(hi - lo)*(ROW.bot-ROW.top);
+    state.geom = { t0, X, Y, W, lo, hi };
+
+    // 横スクロールの余白（両端の時刻も中央に来られるように）
+    const cw = sc.clientWidth;
+    $("track").style.cssText = "width:"+(W+cw)+"px;padding:0 "+(cw/2)+"px";
+    $("inner").style.width = W+"px";
+
+    // 日付の行（DOM・ラベルは左に貼りつく）
+    let dh = "";
+    const d = new Date(t0); d.setHours(0,0,0,0);
+    for(let ds=d.getTime(); ds<=t1; ds+=864e5){
+      const a = ds<=t0 ? 0 : X(ds), b = ds+864e5>t1 ? W : X(ds+864e5);
+      const dd = new Date(ds), rel = ["今日","明日","明後日"][dayDiff(dd)];
+      dh += '<div class="dayseg'+(dd.getDay()===0?" sun":dd.getDay()===6?" sat":"")+'" style="width:'+(b-a)+'px"><span>'+
+        dd.getDate()+"("+WD[dd.getDay()]+")"+(rel?"<em>"+rel+"</em>":"")+'</span></div>';
+    }
+    $("dayrow").innerHTML = dh;
+
+    // canvas
+    const cv = $("tl"), ctx = cv.getContext("2d");
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.style.width = W+"px"; cv.style.height = ROW.h+"px";
+    cv.width = W*dpr; cv.height = ROW.h*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,W,ROW.h);
+
+    // 横じま（1hPaごと）
+    for(let v=lo; v<hi; v++){
+      ctx.fillStyle = v%2 ? "#ffffff" : "#f6f4f0";
+      ctx.fillRect(0, Y(v+1), W, Y(v)-Y(v+1));
+    }
+    // 5hPaごとの点線
+    ctx.strokeStyle = hexA(css("--accent"),.45); ctx.setLineDash([4,4]); ctx.lineWidth = 1;
+    for(let v=Math.ceil(lo/5)*5; v<=hi; v+=5){ ctx.beginPath(); ctx.moveTo(0,Y(v)); ctx.lineTo(W,Y(v)); ctx.stroke(); }
+    ctx.setLineDash([]);
+
+    // 時間の目盛り・縦線
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    tl.forEach(x => {
+      const xx = X(x.t.getTime()), h = x.t.getHours(), m3 = h%3===0;
+      ctx.strokeStyle = "#b9b2a6"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(xx, ROW.tick-(m3?9:5)); ctx.lineTo(xx, ROW.tick); ctx.stroke();
+      if(m3){
+        ctx.fillStyle = h===0||h===12 ? css("--ink") : css("--sub");
+        ctx.font = (h===0||h===12 ? "bold 13px" : "12px")+" sans-serif";
+        ctx.fillText(h===0||h===12 ? h+"時" : h, xx, ROW.lbl);
+        ctx.strokeStyle = h===0 ? "#d6cfc3" : "rgba(0,0,0,.06)";
+        ctx.beginPath(); ctx.moveTo(xx, ROW.tick+2); ctx.lineTo(xx, ROW.h); ctx.stroke();
+        // 気温・天気（3時間ごと）
+        const fut = x.t.getTime() >= base.getTime();
+        ctx.font = "bold 12px sans-serif"; ctx.fillStyle = fut ? css("--warm") : css("--sub");
+        ctx.fillText(Math.round(x.temp)+"℃", xx, ROW.temp);
+        ctx.font = "21px sans-serif"; ctx.globalAlpha = fut ? 1 : .55;
+        ctx.fillText(wIcon(x.wc, x.day), xx, ROW.icon); ctx.globalAlpha = 1;
+      }
+    });
+    ctx.strokeStyle = "#e3ded5"; ctx.beginPath(); ctx.moveTo(0,ROW.tick+.5); ctx.lineTo(W,ROW.tick+.5); ctx.stroke();
+
+    // 注意時間帯（ななめ線）
+    const wins = windows(tl);
+    wins.forEach(w => {
+      const x0 = X(w.from.getTime()) - PXH, x1 = X(w.to.getTime());
+      const col = LV_COL[w.lv];
+      ctx.fillStyle = hexA(col,.10); ctx.fillRect(x0, ROW.top, x1-x0, ROW.bot-ROW.top);
+      ctx.globalAlpha = .28; ctx.fillStyle = hatch(ctx, col); ctx.fillRect(x0, ROW.top, x1-x0, ROW.bot-ROW.top); ctx.globalAlpha = 1;
+    });
+
+    // 気圧の線
+    const g = ctx.createLinearGradient(0,ROW.top,0,ROW.bot);
+    g.addColorStop(0,hexA(css("--accent"),.22)); g.addColorStop(1,hexA(css("--accent"),0));
+    ctx.beginPath(); tl.forEach((x,k)=> k?ctx.lineTo(X(x.t.getTime()),Y(x.p)):ctx.moveTo(X(x.t.getTime()),Y(x.p)));
+    ctx.lineTo(X(t1),ROW.bot); ctx.lineTo(X(t0),ROW.bot); ctx.closePath(); ctx.fillStyle = g; ctx.fill();
+    ctx.beginPath(); tl.forEach((x,k)=> k?ctx.lineTo(X(x.t.getTime()),Y(x.p)):ctx.moveTo(X(x.t.getTime()),Y(x.p)));
+    ctx.strokeStyle = css("--accent"); ctx.lineWidth = 3; ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.stroke();
+
+    // 注意時間帯のラベル（顔マーク＋レベル）
+    wins.forEach(w => {
+      const x0 = X(w.from.getTime()) - PXH, x1 = X(w.to.getTime()), xm = (x0+x1)/2;
+      const im = FACE_IMG[w.dir], fs = 28;
+      // 線とかぶらない位置（上か下）に置く
+      const lineY = Y(w.peak.p), upper = lineY > ROW.top + 90;
+      const fy = upper ? ROW.top + 8 : ROW.bot - 56;
+      if(im && im.complete) ctx.drawImage(im, xm - fs/2, fy, fs, fs);
+      ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "top";
+      const txt = (w.dir==="down"?"↓":"↑")+LV_TXT[w.lv];
+      const tw = ctx.measureText(txt).width + 10;
+      ctx.fillStyle = "rgba(255,255,255,.85)";
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(xm-tw/2, fy+fs+2, tw, 17, 8) : ctx.rect(xm-tw/2, fy+fs+2, tw, 17); ctx.fill();
+      ctx.fillStyle = LV_DARK[w.lv]; ctx.fillText(txt, xm, fy+fs+4);
+    });
+
+    // 3時間変化のバー
+    const by = ROW.bar;
+    ctx.strokeStyle = "#d6cfc3"; ctx.beginPath(); ctx.moveTo(0,by+.5); ctx.lineTo(W,by+.5); ctx.stroke();
+    tl.forEach(x => {
+      if(x.d3 == null) return;
+      const hgt = Math.max(-24, Math.min(24, -x.d3*7));
+      ctx.fillStyle = x.lv ? LV_COL[x.lv] : "#cfc9be";
+      ctx.fillRect(X(x.t.getTime())-PXH*0.3, by, PXH*0.6, hgt);
+    });
+
+    // 過去を薄く・現在線
+    const now = Date.now(), xn = X(now);
+    ctx.fillStyle = "rgba(120,112,100,.10)"; ctx.fillRect(0, 0, xn, ROW.h);
+    ctx.strokeStyle = "rgba(212,88,63,.7)"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(xn, ROW.tick); ctx.lineTo(xn, ROW.h); ctx.stroke();
+    ctx.fillStyle = "#d4583f"; ctx.beginPath(); ctx.moveTo(xn-5,ROW.tick); ctx.lineTo(xn+5,ROW.tick); ctx.lineTo(xn,ROW.tick+7); ctx.fill();
+
+    // 左の目盛り（固定表示）
+    let yh = "";
+    for(let v=Math.ceil(lo/5)*5; v<=hi; v+=5) yh += '<div style="top:'+Y(v)+'px">'+v+'</div>';
+    yh += '<div class="s" style="top:'+(ROW.bar-14)+'px">3h変化</div>';
+    $("yaxis").innerHTML = yh;
+
+    // 表示位置
+    const target = prevT && prevT>=t0 && prevT<=t1 ? prevT : now;
+    sc.scrollLeft = X(target);
+    updateSel();
+  }
+
+  // 中央の時刻を読み取って上の情報を更新
+  function centerIdx(){
+    const sc = $("sc"), n = state.tl.length;
+    return Math.max(0, Math.min(n-1, (sc.scrollLeft - PXH/2)/PXH));
+  }
+  function updateSel(){
+    if(!state.tl) return;
+    const tl = state.tl, G = state.geom, f = centerIdx(), i = Math.round(f);
+    const a = tl[Math.floor(f)], b = tl[Math.min(tl.length-1, Math.ceil(f))];
+    const pf = a.p + (b.p - a.p)*(f - Math.floor(f));
+    const dot = $("cdot"); dot.style.display = "block"; dot.style.top = (28 + G.Y(pf))+"px";
+
+    const pt = tl[i], t = pt.t; state.selT = t.getTime();
+    $("iY").textContent = t.getFullYear();
+    $("iMD").innerHTML = (t.getMonth()+1)+"/"+t.getDate()+"<small>("+WD[t.getDay()]+")</small>";
+    $("iH").innerHTML = t.getHours()+"<small>時</small>";
+    $("iT").textContent = Math.round(pt.temp);
+    $("iP").textContent = pt.p.toFixed(1);
+    const j = Math.min(i+3, tl.length-1), c = tl[j].p - pt.p;
+    $("iCL").textContent = t.getHours()+"〜"+tl[j].t.getHours()+"時の変化";
+    const cl = levelOf(c);
+    $("iC").textContent = fmt(c);
+    $("iC").style.color = cl.lv ? LV_DARK[cl.lv] : css("--ink");
+    $("iLv").innerHTML = pt.lv ? faceHTML(pt.dir,26)+" この時間は "+lvTag(pt.lv, pt.dir) : '<span class="badge">この時間は安定</span>';
+    $("nowBtn").classList.toggle("show", Math.abs(state.selT - Date.now()) > 1.5*HR);
+  }
+
+  // スクロール後は近い「正時」にそろえる
+  let snapT, touching = false;
+  function snap(){
+    if(touching || !state.tl) return;
+    const sc = $("sc"), target = Math.round(centerIdx())*PXH + PXH/2;
+    if(Math.abs(sc.scrollLeft - target) > 1) sc.scrollTo({left:target, behavior:"smooth"});
+  }
+  const sc = $("sc");
+  sc.addEventListener("scroll", () => { updateSel(); clearTimeout(snapT); snapT = setTimeout(snap, 160); }, {passive:true});
+  sc.addEventListener("touchstart", () => { touching = true; }, {passive:true});
+  sc.addEventListener("touchend", () => { touching = false; clearTimeout(snapT); snapT = setTimeout(snap, 200); }, {passive:true});
+  // タップした時刻を中央へ
+  $("tl").addEventListener("click", e => {
+    if(!state.tl) return;
+    const x = e.clientX - $("tl").getBoundingClientRect().left;
+    const i = Math.max(0, Math.min(state.tl.length-1, Math.round((x - PXH/2)/PXH)));
+    sc.scrollTo({left: i*PXH + PXH/2, behavior:"smooth"});
+  });
+  // マウスのドラッグでもスクロール
+  let drag = null;
+  sc.addEventListener("pointerdown", e => { if(e.pointerType==="mouse") drag = {x:e.clientX, s:sc.scrollLeft, moved:false}; });
+  window.addEventListener("pointermove", e => { if(!drag) return; const dx = e.clientX - drag.x;
+    if(Math.abs(dx)>3) drag.moved = true; sc.scrollLeft = drag.s - dx; });
+  window.addEventListener("pointerup", () => { if(drag && drag.moved){ const stop = ev => { ev.stopPropagation(); };
+    $("tl").addEventListener("click", stop, {capture:true, once:true}); setTimeout(()=>$("tl").removeEventListener("click", stop, {capture:true}), 50); }
+    drag = null; });
+  $("nowBtn").addEventListener("click", () => { if(state.geom) sc.scrollTo({left: state.geom.X(Date.now()), behavior:"smooth"}); });
+
+  // ---------- この先48時間 ----------
+  function renderMsg(){
     const pts = state.data.pts, now = new Date();
     let i = pts.findIndex(x => x.t > now); i = i<=0 ? 0 : i-1;
-    const cur = pts[i];
-    const at = h => pts[Math.min(i+h, pts.length-1)];
-    const c3 = at(3).p - cur.p, c6 = at(6).p - cur.p;
-    const arrow = v => v <= -1 ? "↘" : v >= 1 ? "↗" : "→";
-    const fmt = v => { const r = Math.round(v*10)/10; return r===0 ? "±0" : (r>0?"+":"")+r.toFixed(1); };
-    $("nowP").innerHTML = cur.p.toFixed(0)+'<span class="unit">hPa</span>';
-    $("trend").textContent = "3時間後 "+arrow(c3)+" "+fmt(c3)+"　6時間後 "+arrow(c6)+" "+fmt(c6);
-
-    // next 24h max level
-    const next = pts.slice(i, i+24);
-    const hasUp = next.some(x=>dirOf(x)==="up"), hasDown = next.some(x=>dirOf(x)==="down");
-    $("nowBadge").innerHTML = (hasUp||hasDown)
-      ? '<div class="nowfaces"><div class="faces" style="justify-content:center">'+(hasDown?faceHTML("down",40):"")+(hasUp?faceHTML("up",40):"")+'</div>24時間以内</div>'
-      : '<span class="badge lv0">24時間 安定</span>';
-
     const win = windows(pts.slice(i, i+48));
-    const dayLbl = d => {
-      const t0 = new Date(); t0.setHours(0,0,0,0);
-      const diff = Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate()) - t0)/864e5);
-      return ["今日","明日","明後日"][diff] ?? (d.getMonth()+1)+"/"+d.getDate();
-    };
-    let msg;
-    if(!win.length){
-      msg = "この先48時間は大きな気圧変化はなさそうです。";
-    } else {
-      msg = win.slice(0,3).map(w => {
-        const from = new Date(w.from.getTime()-3*3600e3); // change happens over the preceding 3h
-        return '<div class="row">'+faceHTML(w.dir,30)+'<div><b>'+dayLbl(from)+" "+from.getHours()+"時ごろ〜"+(dayLbl(w.to)!==dayLbl(from)?dayLbl(w.to)+" ":"")+w.to.getHours()+"時ごろ</b><br>"+
-          (w.dir==="down"?"気圧が急に下がります":"気圧が急に上がります")+'　<span class="tag '+w.dir+'">'+LV_TXT[w.lv]+"</span></div></div>";
-      }).join("");
-    }
-    $("msg").innerHTML = msg;
+    if(!win.length){ $("msg").innerHTML = '<div class="row">この先48時間は大きな気圧変化はなさそうです。</div>'; return; }
+    $("msg").innerHTML = win.slice(0,4).map(w => {
+      const from = new Date(w.from.getTime()-3*HR);
+      return '<div class="row">'+faceHTML(w.dir,32)+'<div><b>'+dayLbl(from)+" "+from.getHours()+"時ごろ〜"+
+        (dayLbl(w.to)!==dayLbl(from)?dayLbl(w.to)+" ":"")+w.to.getHours()+"時ごろ</b><br>"+
+        (w.dir==="down"?"気圧が下がります":"気圧が上がります")+"　"+lvTag(w.lv, w.dir)+"</div></div>";
+    }).join("");
   }
 
-  // ---------- render: chart ----------
-  let geom = null;
-  function renderChart(){
-    const cv = $("chart"), ctx = cv.getContext("2d");
-    const dpr = window.devicePixelRatio || 1;
-    const W = cv.clientWidth, H = cv.clientHeight;
-    cv.width = W*dpr; cv.height = H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
-    ctx.clearRect(0,0,W,H);
-
-    const now = new Date();
-    const day1 = state.range===1;
-    const start = day1 ? new Date(now.getTime()-3*3600e3) : new Date(now.getTime()-24*3600e3);
-    const end = day1 ? new Date(now.getTime()+24*3600e3) : new Date(now.getTime()+7*24*3600e3);
-    const pts = state.data.pts.filter(x => x.t>=start && x.t<=end);
-    if(pts.length<2) return;
-
-    const L=38, R=8, T=18, B=40, stripH=8;
-    const pw = W-L-R, ph = H-T-B;
-    let lo = Math.min(...pts.map(x=>x.p)), hi = Math.max(...pts.map(x=>x.p));
-    const padv = Math.max(2.5, (hi-lo)*0.22); lo = Math.floor(lo-padv); hi = Math.ceil(hi+padv);
-    const t0 = pts[0].t.getTime(), t1 = pts[pts.length-1].t.getTime();
-    const X = t => L + (t - t0)/(t1 - t0)*pw;
-    const Y = p => T + (hi - p)/(hi - lo)*ph;
-    geom = {pts, X, Y, L, R, W};
-
-    // risk shading
-    const step = (X(t0+3600e3)-X(t0));
-    pts.forEach(x => {
-      if(!x.lv) return;
-      const up = dirOf(x)==="up", a = x.lv===2 ? .26 : .15;
-      ctx.fillStyle = up ? "rgba(255,206,60,"+a+")" : "rgba(95,163,211,"+a+")"; ctx.fillRect(X(x.t)-step, T, step, ph);
-      ctx.fillStyle = up ? (x.lv===2?"#E9A800":"#F7CF4A") : (x.lv===2?"#3E86BE":"#8CC2E8");
-      ctx.fillRect(X(x.t)-step, T+ph+2, step, stripH);
-    });
-
-    // y grid
-    ctx.font = "11px sans-serif"; ctx.fillStyle = css("--sub"); ctx.strokeStyle = css("--line"); ctx.lineWidth = 1;
-    const span = hi-lo, gs = span>30?10: span>12?5: 2;
-    for(let v=Math.ceil(lo/gs)*gs; v<=hi; v+=gs){
-      ctx.beginPath(); ctx.moveTo(L,Y(v)); ctx.lineTo(W-R,Y(v)); ctx.stroke();
-      ctx.textAlign="right"; ctx.textBaseline="middle"; ctx.fillText(v, L-4, Y(v));
-    }
-
-    // day separators & labels
-    ctx.textAlign="center"; ctx.textBaseline="top";
-    const d = new Date(t0); d.setHours(0,0,0,0);
-    for(let dt=d.getTime()+864e5; dt<=t1; dt+=864e5){
-      const x = X(dt);
-      ctx.strokeStyle = "#cfc8bc"; ctx.setLineDash([3,3]);
-      ctx.beginPath(); ctx.moveTo(x,T); ctx.lineTo(x,T+ph); ctx.stroke(); ctx.setLineDash([]);
-    }
-    for(let dt=d.getTime(); dt<=t1; dt+=864e5){
-      const mid = Math.max(dt, t0) + (Math.min(dt+864e5, t1) - Math.max(dt, t0))/2;
-      if(Math.min(dt+864e5,t1) - Math.max(dt,t0) < (day1?3:6)*3600e3) continue;
-      const dd = new Date(dt); ctx.fillStyle = dd.getDay()===0?"#c0504d":dd.getDay()===6?"#3d6f8e":css("--sub");
-      if(day1) ctx.fillText((dd.getMonth()+1)+"/"+dd.getDate()+"("+WD[dd.getDay()]+")", X(mid), T+ph+stripH+8);
-      else { ctx.fillText(dd.getDate()+"日", X(mid), T+ph+stripH+6); ctx.fillText(WD[dd.getDay()], X(mid), T+ph+stripH+20); }
-    }
-    if(day1){ // hour ticks
-      ctx.fillStyle = css("--sub"); ctx.font="10px sans-serif";
-      pts.forEach(x => { const h = x.t.getHours(); if(h%3===0 && h!==0){
-        ctx.fillText(h+"時", X(x.t), T+ph+stripH+22);
-        ctx.strokeStyle = "rgba(0,0,0,.05)"; ctx.beginPath(); ctx.moveTo(X(x.t),T); ctx.lineTo(X(x.t),T+ph); ctx.stroke(); } });
-    }
-
-    // area + line
-    const g = ctx.createLinearGradient(0,T,0,T+ph);
-    g.addColorStop(0,"rgba(61,111,142,.25)"); g.addColorStop(1,"rgba(61,111,142,0)");
-    ctx.beginPath(); pts.forEach((x,k)=> k?ctx.lineTo(X(x.t),Y(x.p)):ctx.moveTo(X(x.t),Y(x.p)));
-    ctx.lineTo(X(t1),T+ph); ctx.lineTo(X(t0),T+ph); ctx.closePath(); ctx.fillStyle=g; ctx.fill();
-    ctx.beginPath(); pts.forEach((x,k)=> k?ctx.lineTo(X(x.t),Y(x.p)):ctx.moveTo(X(x.t),Y(x.p)));
-    ctx.strokeStyle = css("--accent"); ctx.lineWidth = 2.2; ctx.lineJoin="round"; ctx.stroke();
-
-    // past dimming + now line
-    const xn = X(now.getTime());
-    ctx.fillStyle = "rgba(244,241,236,.55)"; ctx.fillRect(L, T, xn-L, ph);
-    ctx.strokeStyle = css("--ink"); ctx.lineWidth=1.2;
-    ctx.beginPath(); ctx.moveTo(xn,T); ctx.lineTo(xn,T+ph); ctx.stroke();
-    ctx.fillStyle = css("--ink"); ctx.font="bold 11px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="bottom";
-    ctx.fillText("いま", xn, T-2);
-
-    // face marks at the strongest point of each rapid-change window
-    const fs = day1 ? 30 : 22;
-    windows(pts).forEach(w => {
-      const im = FACE_IMG[w.dir]; if(!im || !im.complete) return;
-      const px = X(w.peak.t) - step/2, py = Y(w.peak.p);
-      let fy = w.dir==="up" ? py - fs - 6 : py + 6;
-      fy = Math.max(T, Math.min(T+ph-fs, fy));
-      const fx = Math.max(L, Math.min(W-R-fs, px - fs/2));
-      ctx.drawImage(im, fx, fy, fs, fs);
-    });
-  }
-
-  function showTip(clientX){
-    if(!geom) return;
-    const cv = $("chart"), rect = cv.getBoundingClientRect(), x = clientX - rect.left;
-    let best = null, bd = 1e9;
-    geom.pts.forEach(p => { const d = Math.abs(geom.X(p.t)-x); if(d<bd){bd=d;best=p;} });
-    if(!best) return;
-    const tip = $("tip"), t = best.t;
-    tip.innerHTML = (t.getMonth()+1)+"/"+t.getDate()+"("+WD[t.getDay()]+") "+t.getHours()+"時<br><b>"+best.p.toFixed(1)+" hPa</b>"+
-      (best.d3!=null?"　3h "+(best.d3>0?"+":"")+best.d3.toFixed(1):"");
-    tip.style.display="block";
-    const px = Math.min(Math.max(geom.X(t), 60), rect.width-60);
-    tip.style.left = px+"px";
-  }
-  const cv = $("chart");
-  cv.addEventListener("pointermove", e => showTip(e.clientX));
-  cv.addEventListener("pointerdown", e => showTip(e.clientX));
-  cv.addEventListener("pointerleave", () => $("tip").style.display="none");
-
-  // ---------- render: days ----------
+  // ---------- 日ごと ----------
   function renderDays(){
     const {pts, daily} = state.data;
     const today = new Date(); today.setHours(0,0,0,0);
@@ -377,16 +516,17 @@
       const hp = pts.filter(x => x.t.getFullYear()===d.getFullYear() && x.t.getMonth()===d.getMonth() && x.t.getDate()===d.getDate());
       if(!hp.length) return;
       const ps = hp.map(x=>x.p), d3s = hp.map(x=>x.d3).filter(v=>v!=null);
-      const lv = Math.max(...hp.map(x=>x.lv));
-      const dn = hp.filter(x=>dirOf(x)==="down"), upp = hp.filter(x=>dirOf(x)==="up");
-      const mark = !lv ? '<span class="badge lv0">安定</span>' :
-        '<div class="faces">'+(dn.length?faceHTML("down",30):"")+(upp.length?faceHTML("up",30):"")+'</div>'+
-        (lv===2?'<div style="text-align:right;margin-top:2px"><span class="tag down">警戒</span></div>':"");
+      const dn = hp.filter(x=>x.dir==="down"), upp = hp.filter(x=>x.dir==="up");
+      const lvDn = Math.max(0,...dn.map(x=>x.lv)), lvUp = Math.max(0,...upp.map(x=>x.lv));
+      const lv = Math.max(lvDn, lvUp), dir = lvDn >= lvUp ? "down" : "up";
+      const mark = !lv ? '<span class="badge">安定</span>' :
+        '<div class="faces">'+(dn.length?faceHTML("down",28):"")+(upp.length?faceHTML("up",28):"")+'</div>'+
+        '<div style="text-align:right;margin-top:3px">'+lvTag(lv, dir)+'</div>';
       const minD = Math.min(...d3s), maxR = Math.max(...d3s);
       const diff = Math.round((d - today)/864e5);
       const name = ["今日","明日","明後日"][diff] ?? WD[d.getDay()]+"曜";
       html += '<div class="day"><div class="d">'+name+'<small>'+(d.getMonth()+1)+"/"+d.getDate()+"("+WD[d.getDay()]+')</small></div>'+
-        '<div class="w">'+wIcon(daily.weather_code[k])+'</div>'+
+        '<div class="w">'+wIcon(daily.weather_code[k], 1)+'</div>'+
         '<div class="p"><b>'+Math.min(...ps).toFixed(0)+"〜"+Math.max(...ps).toFixed(0)+' hPa</b><br>'+
         "3時間変化 最大 "+(minD<=-0.05?"▼"+(-minD).toFixed(1):"▼0")+" / "+(maxR>=0.05?"▲"+maxR.toFixed(1):"▲0")+"<br>"+
         Math.round(daily.temperature_2m_min[k])+"〜"+Math.round(daily.temperature_2m_max[k])+"℃</div>"+
@@ -396,23 +536,17 @@
   }
 
   // ---------- load ----------
-  async function load(){
+  async function load(keep){
     $("locName").textContent = state.loc.name;
-    $("trend").textContent = "読み込み中…";
     try{
       state.data = await fetchForecast(state.loc);
-      renderNow(); renderChart(); renderDays();
+      renderTimeline(keep); renderMsg(); renderDays();
     }catch(e){
-      $("trend").innerHTML = '<span class="err">データを取得できませんでした。通信環境を確認して再読み込みしてください。</span>';
+      $("msg").innerHTML = '<span class="err">データを取得できませんでした。通信環境を確認して再読み込みしてください。</span>';
     }
   }
 
   // ---------- UI ----------
-  document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => {
-    document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("on"));
-    b.classList.add("on"); state.range = Number(b.dataset.r); $("tip").style.display="none";
-    if(state.data) renderChart();
-  }));
   $("locBtn").addEventListener("click", () => $("search").classList.toggle("open"));
   async function doSearch(){
     const q = $("q").value.trim(); if(!q) return;
@@ -425,7 +559,7 @@
         const b = document.createElement("button");
         b.innerHTML = r.name+' <small>'+[r.admin1,r.country].filter(Boolean).join("・")+"</small>";
         b.onclick = () => { state.loc = {name:r.name, lat:r.latitude, lon:r.longitude}; saveLoc(state.loc);
-          $("search").classList.remove("open"); $("results").innerHTML=""; load(); };
+          $("search").classList.remove("open"); $("results").innerHTML=""; load(false); };
         $("results").appendChild(b);
       });
     }catch(e){ $("results").innerHTML='<div class="err">検索できませんでした</div>'; }
@@ -437,18 +571,18 @@
     $("results").innerHTML = '<div class="note" style="padding:8px 0">現在地を取得中…</div>';
     navigator.geolocation.getCurrentPosition(pos => {
       state.loc = {name:"現在地", lat:+pos.coords.latitude.toFixed(2), lon:+pos.coords.longitude.toFixed(2)};
-      saveLoc(state.loc); $("search").classList.remove("open"); $("results").innerHTML=""; load();
+      saveLoc(state.loc); $("search").classList.remove("open"); $("results").innerHTML=""; load(false);
     }, () => { $("results").innerHTML='<div class="err">現在地を取得できませんでした。地名で検索してください。</div>'; },
     {timeout:10000});
   });
-  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(()=>state.data&&renderChart(), 150); });
+  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(()=>state.data&&renderTimeline(true), 150); });
 
   state.loc = loadLoc() || {name:"東京", lat:35.69, lon:139.69};
   if(!loadLoc()) $("search").classList.add("open");
-  $("lgUp").innerHTML = faceHTML("up",16)+" 急に上がる";
-  $("lgDown").innerHTML = faceHTML("down",16)+" 急に下がる";
-  load();
-  setInterval(() => { if(document.visibilityState==="visible") load(); }, 60*60*1000);
+  $("lgDown").innerHTML = faceHTML("down",16)+" 下がる";
+  $("lgUp").innerHTML = faceHTML("up",16)+" 上がる";
+  load(false);
+  setInterval(() => { if(document.visibilityState==="visible") load(true); }, 60*60*1000);
 })();
 </script>
 </body>
