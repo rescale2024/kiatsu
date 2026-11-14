@@ -98,7 +98,7 @@
 <body>
 <header class="appbar">
   <div class="in">
-    <h1>きあつ予報<small id="locName">場所を選ぶ</small></h1>
+    <h1>きあつ予報<small id="locName"><span id="locLbl">場所を選ぶ</span><span id="upd"></span></small></h1>
     <button class="loc" id="locBtn">📍 場所を変更</button>
   </div>
 </header>
@@ -244,15 +244,18 @@
   }
 
   // ---------- fetch ----------
-  async function fetchForecast(loc){
-    const r2 = v => (+v).toFixed(2); // 約1km単位に丸めて送信
+  const r2 = v => (+v).toFixed(2); // 約1km単位に丸めて送信
+  const locKey = loc => r2(loc.lat)+","+r2(loc.lon);
+  async function fetchRaw(loc){
     const u = "https://api.open-meteo.com/v1/forecast?latitude="+r2(loc.lat)+"&longitude="+r2(loc.lon)+
       "&hourly=surface_pressure,weather_code,temperature_2m,is_day"+
       "&daily=weather_code,temperature_2m_max,temperature_2m_min"+
       "&past_days=1&forecast_days=7&timezone=Asia%2FTokyo";
-    const r = await fetch(u); if(!r.ok) throw new Error("HTTP "+r.status);
-    const j = await r.json(), h = j.hourly;
-    const t = h.time.map(parseT), p = h.surface_pressure;
+    const r = await fetch(u, {cache:"no-store"}); if(!r.ok) throw new Error("HTTP "+r.status);
+    return r.json();
+  }
+  function parseForecast(j){
+    const h = j.hourly, t = h.time.map(parseT), p = h.surface_pressure;
     const pts = [];
     for(let i=0;i<t.length;i++){
       if(p[i]==null) continue;
@@ -261,6 +264,19 @@
     }
     return { pts, daily:j.daily };
   }
+
+  // ---------- 前回データの保存（すぐ表示するため） ----------
+  const CACHE_KEY = "kiatsu_cache";
+  function loadCache(loc){
+    try{
+      const c = JSON.parse(localStorage.getItem(CACHE_KEY));
+      return c && c.key === locKey(loc) && c.json ? c : null;
+    }catch(e){ return null; }
+  }
+  function saveCache(loc, json, at){
+    try{ localStorage.setItem(CACHE_KEY, JSON.stringify({key:locKey(loc), at, json})); }catch(e){}
+  }
+
   async function geocode(q){
     const u = "https://geocoding-api.open-meteo.com/v1/search?name="+encodeURIComponent(q)+"&count=8&language=ja&format=json";
     const r = await fetch(u); const j = await r.json(); return j.results || [];
@@ -504,15 +520,62 @@
   }
 
   // ---------- load ----------
-  async function load(keep){
-    $("locName").textContent = state.loc.name;
-    try{
-      state.data = await fetchForecast(state.loc);
-      renderTimeline(keep); renderMsg(); renderDays();
-    }catch(e){
-      $("msg").innerHTML = '<span class="err">データを取得できませんでした。通信環境を確認して再読み込みしてください。</span>';
-    }
+  const STALE_MS = 30*60*1000;      // 30分たったら更新
+  let fetchedAt = 0, inflight = null, hiddenAt = 0;
+  const hm = ms => { const d = new Date(ms); return d.getHours()+":"+String(d.getMinutes()).padStart(2,"0"); };
+  function setStatus(txt, err){
+    $("upd").textContent = txt ? "　"+txt : "";
+    $("upd").style.color = err ? "#ffd2c8" : "";
   }
+  function renderAll(keep){
+    if(!state.data) return;
+    renderTimeline(keep); renderMsg(); renderDays();
+  }
+  // 位置を選んだとき・起動時：保存データがあれば先に描画
+  function showLoc(){
+    $("locLbl").textContent = state.loc.name;
+    const c = loadCache(state.loc);
+    if(c){
+      try{ state.data = parseForecast(c.json); fetchedAt = c.at; renderAll(false); setStatus(hm(c.at)+" 更新"); }
+      catch(e){ state.data = null; fetchedAt = 0; }
+    } else { state.data = null; fetchedAt = 0; }
+    if(!state.data) $("msg").innerHTML = '<span class="note">読み込み中…</span>';
+    refresh(!state.data);   // 保存データが30分以内なら通信しない
+  }
+  // 最新データを取りに行く（古いときだけ。force で必ず）
+  function refresh(force){
+    if(inflight) return inflight;
+    if(!force && Date.now() - fetchedAt < STALE_MS) return Promise.resolve();
+    const loc = state.loc, hadData = !!state.data;
+    setStatus("更新中…");
+    inflight = (async () => {
+      try{
+        const json = await fetchRaw(loc);
+        if(loc !== state.loc) return;            // 途中で場所が変わったら捨てる
+        const at = Date.now();
+        state.data = parseForecast(json); fetchedAt = at; saveCache(loc, json, at);
+        renderAll(hadData);
+        setStatus(hm(at)+" 更新");
+      }catch(e){
+        if(state.data) setStatus("更新できませんでした（"+hm(fetchedAt)+"時点）", true);
+        else { setStatus(""); $("msg").innerHTML = '<span class="err">データを取得できませんでした。通信環境を確認して再読み込みしてください。</span>'; }
+      }finally{ inflight = null; }
+    })();
+    return inflight;
+  }
+  // アプリに戻ってきたとき：「いま」の位置を合わせ、古ければ裏で更新
+  function onReturn(){
+    if(document.visibilityState !== "visible" || !state.data) return;
+    const away = hiddenAt ? Date.now() - hiddenAt : 0; hiddenAt = 0;
+    if(away > 5*60*1000) renderAll(false);     // 5分以上離れていたら「いま」に戻す
+    refresh(false);
+  }
+  document.addEventListener("visibilitychange", () => {
+    if(document.visibilityState === "hidden") hiddenAt = Date.now(); else onReturn();
+  });
+  window.addEventListener("pageshow", e => { if(e.persisted){ hiddenAt = hiddenAt || 1; onReturn(); } });
+  window.addEventListener("focus", () => refresh(false));
+  setInterval(() => { if(document.visibilityState === "visible") refresh(false); }, 5*60*1000);
 
   // ---------- UI ----------
   $("locBtn").addEventListener("click", () => $("search").classList.toggle("open"));
@@ -527,7 +590,7 @@
         const b = document.createElement("button");
         b.innerHTML = r.name+' <small>'+[r.admin1,r.country].filter(Boolean).join("・")+"</small>";
         b.onclick = () => { state.loc = {name:r.name, lat:r.latitude, lon:r.longitude}; saveLoc(state.loc);
-          $("search").classList.remove("open"); $("results").innerHTML=""; load(false); };
+          $("search").classList.remove("open"); $("results").innerHTML=""; showLoc(); };
         $("results").appendChild(b);
       });
     }catch(e){ $("results").innerHTML='<div class="err">検索できませんでした</div>'; }
@@ -539,7 +602,7 @@
     $("results").innerHTML = '<div class="note" style="padding:8px 0">現在地を取得中…</div>';
     navigator.geolocation.getCurrentPosition(pos => {
       state.loc = {name:"現在地", lat:+pos.coords.latitude.toFixed(2), lon:+pos.coords.longitude.toFixed(2)};
-      saveLoc(state.loc); $("search").classList.remove("open"); $("results").innerHTML=""; load(false);
+      saveLoc(state.loc); $("search").classList.remove("open"); $("results").innerHTML=""; showLoc();
     }, () => { $("results").innerHTML='<div class="err">現在地を取得できませんでした。地名で検索してください。</div>'; },
     {timeout:10000});
   });
@@ -549,8 +612,7 @@
   if(!loadLoc()) $("search").classList.add("open");
   $("lgDown").innerHTML = faceHTML("down",16)+" 下がる";
   $("lgUp").innerHTML = faceHTML("up",16)+" 上がる";
-  load(false);
-  setInterval(() => { if(document.visibilityState==="visible") load(true); }, 60*60*1000);
+  showLoc();
 })();
 </script>
 </body>
