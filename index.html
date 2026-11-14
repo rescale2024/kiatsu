@@ -251,8 +251,27 @@
       "&hourly=surface_pressure,weather_code,temperature_2m,is_day"+
       "&daily=weather_code,temperature_2m_max,temperature_2m_min"+
       "&past_days=1&forecast_days=7&timezone=Asia%2FTokyo";
-    const r = await fetch(u, {cache:"no-store"}); if(!r.ok) throw new Error("HTTP "+r.status);
-    return r.json();
+    let last;
+    for(let k=0;k<2;k++){                       // 失敗したら1回だけやり直す
+      try{ return await fetchJSON(u, 12000); }
+      catch(e){ last = e; if(k===0) await new Promise(z=>setTimeout(z,1500)); }
+    }
+    throw last;
+  }
+  // 応答がないまま待ち続けないよう、一定時間で打ち切る
+  async function fetchJSON(u, ms){
+    const ac = window.AbortController ? new AbortController() : null;
+    let tid;
+    const timer = new Promise((_,rej) => { tid = setTimeout(() => { ac && ac.abort(); rej(new Error("タイムアウト（"+ms/1000+"秒）")); }, ms); });
+    try{
+      const r = await Promise.race([fetch(u, ac ? {signal:ac.signal} : {}), timer]);
+      if(!r.ok) throw new Error("サーバー応答 HTTP "+r.status);
+      return await Promise.race([r.json(), timer]);
+    }catch(e){
+      if(e && e.name === "AbortError") throw new Error("タイムアウト（"+ms/1000+"秒）");
+      if(e && e.name === "TypeError") throw new Error("通信エラー（"+e.message+"）");
+      throw e;
+    }finally{ clearTimeout(tid); }
   }
   function parseForecast(j){
     const h = j.hourly, t = h.time.map(parseT), p = h.surface_pressure;
@@ -527,6 +546,15 @@
     $("upd").textContent = txt ? "　"+txt : "";
     $("upd").style.color = err ? "#ffd2c8" : "";
   }
+  function showError(title, e){
+    const why = e && e.message ? e.message : String(e);
+    $("msg").innerHTML = '<div class="err">'+title+'</div><div class="note">原因：'+why.replace(/[<>&]/g,"")+
+      '</div><button id="retryBtn" class="nowbtn show" style="position:static;margin-top:8px">もう一度読み込む</button>';
+    $("retryBtn").onclick = () => { $("msg").innerHTML = '<span class="note">読み込み中…</span>'; refresh(true); };
+  }
+  // 想定外のエラーも画面に出す（原因調査用）
+  window.addEventListener("error", e => { try{ showError("プログラムでエラーが起きました", e.error || e.message); }catch(_){} });
+  window.addEventListener("unhandledrejection", e => { try{ showError("プログラムでエラーが起きました", e.reason); }catch(_){} });
   function renderAll(keep){
     if(!state.data) return;
     renderTimeline(keep); renderMsg(); renderDays();
@@ -536,8 +564,12 @@
     $("locLbl").textContent = state.loc.name;
     const c = loadCache(state.loc);
     if(c){
-      try{ state.data = parseForecast(c.json); fetchedAt = c.at; renderAll(false); setStatus(hm(c.at)+" 更新"); }
-      catch(e){ state.data = null; fetchedAt = 0; }
+      try{ state.data = parseForecast(c.json); fetchedAt = c.at; }
+      catch(e){ state.data = null; fetchedAt = 0; try{ localStorage.removeItem(CACHE_KEY); }catch(_){} }
+      if(state.data){
+        try{ renderAll(false); setStatus(hm(c.at)+" 更新"); }
+        catch(e){ showError("保存データの表示でエラーが起きました", e); }
+      }
     } else { state.data = null; fetchedAt = 0; }
     if(!state.data) $("msg").innerHTML = '<span class="note">読み込み中…</span>';
     refresh(!state.data);   // 保存データが30分以内なら通信しない
@@ -549,17 +581,22 @@
     const loc = state.loc, hadData = !!state.data;
     setStatus("更新中…");
     inflight = (async () => {
+      let json;
+      try{ json = await fetchRaw(loc); }
+      catch(e){
+        inflight = null;
+        if(state.data) setStatus("更新できませんでした（"+hm(fetchedAt)+"時点）", true);
+        else { setStatus(""); showError("データを取得できませんでした", e); }
+        return;
+      }
+      inflight = null;
+      if(loc !== state.loc) return;              // 途中で場所が変わったら捨てる
       try{
-        const json = await fetchRaw(loc);
-        if(loc !== state.loc) return;            // 途中で場所が変わったら捨てる
         const at = Date.now();
         state.data = parseForecast(json); fetchedAt = at; saveCache(loc, json, at);
         renderAll(hadData);
         setStatus(hm(at)+" 更新");
-      }catch(e){
-        if(state.data) setStatus("更新できませんでした（"+hm(fetchedAt)+"時点）", true);
-        else { setStatus(""); $("msg").innerHTML = '<span class="err">データを取得できませんでした。通信環境を確認して再読み込みしてください。</span>'; }
-      }finally{ inflight = null; }
+      }catch(e){ showError("データの表示でエラーが起きました", e); }
     })();
     return inflight;
   }
